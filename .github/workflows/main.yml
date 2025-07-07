@@ -1,36 +1,54 @@
-name: Node.js CI
+name: Node.js CI # ওয়ার্কফ্লোর একটি নাম, যা GitHub UI-তে দেখা যাবে।
 
 on:
   push:
-    branches: [main]
+    branches: [main] # যখন main ব্রাঞ্চে কোড push করা হবে, তখন এই ওয়ার্কফ্লো চলবে।
   pull_request:
-    branches: [main]
+    branches: [main] # যখন main ব্রাঞ্চকে টার্গেট করে একটি pull request খোলা হবে, তখন এই ওয়ার্কফ্লো চলবে।
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build: # একটি কাজের নাম (job name)। একটি ওয়ার্কফ্লোতে একাধিক job থাকতে পারে।
+    runs-on: ubuntu-latest # এই কাজটি চালানোর জন্য একটি Ubuntu লিনাক্স এনভায়রনমেন্ট ব্যবহার করা হবে।
 
     strategy:
-      matrix:
-        node-version: [20.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+      matrix: # ম্যাট্রিক্স ব্যবহার করে বিভিন্ন কনফিগারেশনে কাজ চালানো যায়।
+        node-version: [20.x] # এখানে Node.js এর 20.x সংস্করণ ব্যবহার করা হবে।
+        # Node.js এর সমর্থিত সংস্করণগুলি দেখতে: https://nodejs.org/en/about/releases/
 
-    steps:
-    # Step to check out the repository code
-    - uses: actions/checkout@v2
+    steps: # এই job-এর মধ্যে ধাপে ধাপে কী কাজ করা হবে, তা এখানে সংজ্ঞায়িত করা হয়।
 
-    # Step to set up the specified Node.js version
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v2
+    # 1. রিপোজিটরি কোড চেকআউট করা (আপনার প্রজেক্টের ফাইলগুলো রানারে নিয়ে আসা)
+    - name: Checkout repository # এই ধাপের একটি বর্ণনামূলক নাম।
+      uses: actions/checkout@v4 # 'actions/checkout' অ্যাকশনটি রিপোজিটরি কোড রানারে নিয়ে আসে।
+                               # v2 থেকে v4 এ আপডেট করা হয়েছে, যা সর্বশেষ ফিচার এবং নিরাপত্তার জন্য ভালো।
+
+    # 2. নির্দিষ্ট Node.js সংস্করণ সেটআপ করা এবং নির্ভরতা ক্যাশে করা
+    - name: Use Node.js ${{ matrix.node-version }} # ধাপের নাম, Node.js সংস্করণ উল্লেখ করে।
+      uses: actions/setup-node@v4 # 'actions/setup-node' অ্যাকশনটি Node.js এনভায়রনমেন্ট সেটআপ করে।
+                                  # v2 থেকে v4 এ আপডেট করা হয়েছে।
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: ${{ matrix.node-version }} # matrix থেকে Node.js সংস্করণ ব্যবহার করা হচ্ছে।
+        cache: 'npm' # নতুন সংযোজন: npm নির্ভরতা (dependencies) ক্যাশে করার জন্য।
+                     # এটি পরের বার একই ডিপেন্ডেন্সি ইনস্টল করার সময় অনেক দ্রুত করবে।
+                     # 'package-lock.json' ফাইলের উপর ভিত্তি করে ক্যাশে তৈরি হবে।
 
-    # Step to install dependencies
-    - name: Install dependencies
-      run: npm install
+    # 3. প্রজেক্টের নির্ভরতা (dependencies) ইনস্টল করা
+    - name: Install dependencies # ধাপের নাম।
+      run: npm ci # 'npm install' এর পরিবর্তে 'npm ci' ব্যবহার করা হয়েছে।
+                   # 'npm ci' (clean install) CI (Continuous Integration) এর জন্য বেশি উপযুক্ত।
+                   # এটি 'node_modules' ফোল্ডারটি মুছে দেয় এবং 'package-lock.json' ফাইল অনুযায়ী হুবহু ডিপেন্ডেন্সি ইনস্টল করে।
+                   # এটি 'npm install' এর চেয়ে দ্রুত এবং বিল্ডের ধারাবাহিকতা নিশ্চিত করে।
 
-    # Step to run the bot with the correct port
-    - name: Start the bot
-      env:
-        PORT: 8080
-      run: npm start
+    # গুরুত্বপূর্ণ বিবেচনা: বট চালানো (Running the bot)
+    # সাধারণত CI ওয়ার্কফ্লোর প্রধান উদ্দেশ্য হলো কোড তৈরি (build), পরীক্ষা (test) এবং লিন্টিং (lint) করা।
+    # 'npm start' কমান্ডটি যদি আপনার বটকে স্থায়ীভাবে চালিয়ে রাখে, তবে GitHub Actions রানারে সেটি চালিয়ে রাখা CI এর জন্য উপযুক্ত নয়।
+    # GitHub Actions রানারগুলি সাময়িক এবং কাজ শেষ হলে বন্ধ হয়ে যায়।
+
+    # যদি 'npm start' আপনার টেস্ট চালায়, তাহলে ধাপটির নাম 'Run tests' করুন এবং এটি রেখে দিন।
+    # যদি 'npm start' আপনার বটকে ডেপ্লয় (deploy) করার জন্য ব্যবহার হয়, তাহলে আপনার ডেপ্লয়মেন্টের জন্য অতিরিক্ত ধাপ যোগ করতে হবে।
+    # বর্তমান CI ওয়ার্কফ্লোতে এই ধাপটি অপ্রয়োজনীয় হওয়ায় মন্তব্য (comment) করে দেওয়া হয়েছে।
+
+    # - name: Start the bot # এই ধাপটি একটি সাধারণ CI ওয়ার্কফ্লোর জন্য প্রয়োজনীয় নাও হতে পারে।
+    #   env: # পরিবেশ ভেরিয়েবল সেট করা হয়েছে।
+    #     PORT: 8080 # এখানে একটি পোর্ট সেট করা হয়েছে, যা হয়তো টেস্ট বা ডেপ্লয়মেন্টের জন্য প্রয়োজন।
+    #   run: npm start # আপনার বট শুরু করার কমান্ড।
